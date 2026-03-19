@@ -2,6 +2,18 @@ import dbConnect from '@/src/DB/connection';
 import Member from '@/src/DB/models/Member';
 import { v4 as uuidv4 } from 'uuid';
 
+function getDefaultAdapterConfig(adapterType) {
+  switch (adapterType) {
+    case 'claude-cli':
+      return { model: 'claude-sonnet-4-20250514', maxTurns: 10 };
+    case 'openclaw':
+      return { url: 'ws://127.0.0.1:18789', model: 'claude-sonnet-4-20250514' };
+    case 'api-key':
+    default:
+      return { provider: 'anthropic', model: 'claude-sonnet-4-20250514' };
+  }
+}
+
 export default async function handler(req, res) {
   await dbConnect();
 
@@ -14,7 +26,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { companyId, name, role, type, reportsTo, notifyVia, adapterConfig, skills, rules, heartbeatCron } = req.body;
+    const { companyId, name, role, type, reportsTo, notifyVia, adapterType, adapterConfig, skills, rules, heartbeatCron } = req.body;
     if (!companyId || !name || !role || !type) {
       return res.status(400).json({ error: 'companyId, name, role, and type are required' });
     }
@@ -32,8 +44,8 @@ export default async function handler(req, res) {
     }
 
     if (type === 'agent') {
-      memberData.adapterType = 'api-key';
-      memberData.adapterConfig = adapterConfig || { provider: 'anthropic', model: 'claude-sonnet-4-20250514' };
+      memberData.adapterType = adapterType || 'api-key';
+      memberData.adapterConfig = adapterConfig || getDefaultAdapterConfig(memberData.adapterType);
       memberData.skills = skills || [];
       memberData.rules = rules || [];
       memberData.heartbeatCron = heartbeatCron || '*/30 * * * *';

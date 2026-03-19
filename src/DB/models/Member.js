@@ -12,7 +12,7 @@ const MemberSchema = new mongoose.Schema(
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     notifyVia: { type: String, enum: ['email', 'telegram', 'slack'], default: 'email' },
     // Agent fields
-    adapterType: { type: String, enum: ['api-key'], default: null },
+    adapterType: { type: String, enum: ['api-key', 'claude-cli', 'openclaw'], default: null },
     adapterConfig: { type: mongoose.Schema.Types.Mixed, default: {} },
     skills: [{ type: String }],
     rules: [{ type: String }],

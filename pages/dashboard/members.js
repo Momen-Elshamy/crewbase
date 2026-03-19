@@ -19,7 +19,7 @@ function MembersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [triggeringAgent, setTriggeringAgent] = useState(null);
-  const [form, setForm] = useState({ name: '', role: '', type: 'human' });
+  const [form, setForm] = useState({ name: '', role: '', type: 'human', adapterType: 'api-key', model: '', provider: 'anthropic', openclawUrl: '' });
 
   const fetchMembers = useCallback(async () => {
     if (!activeCompany) return;
@@ -36,17 +36,40 @@ function MembersPage() {
   async function handleCreate(e) {
     e.preventDefault();
     if (!activeCompany || !form.name || !form.role) return;
+
+    const payload = {
+      companyId: activeCompany._id,
+      name: form.name,
+      role: form.role,
+      type: form.type,
+    };
+
+    if (form.type === 'agent') {
+      payload.adapterType = form.adapterType;
+      if (form.adapterType === 'api-key') {
+        payload.adapterConfig = {
+          provider: form.provider || 'anthropic',
+          model: form.model || 'claude-sonnet-4-20250514',
+        };
+      } else if (form.adapterType === 'claude-cli') {
+        payload.adapterConfig = {
+          model: form.model || 'claude-sonnet-4-20250514',
+          maxTurns: 10,
+        };
+      } else if (form.adapterType === 'openclaw') {
+        payload.adapterConfig = {
+          url: form.openclawUrl || 'ws://127.0.0.1:18789',
+          model: form.model || 'claude-sonnet-4-20250514',
+        };
+      }
+    }
+
     await fetch('/api/board/members', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        companyId: activeCompany._id,
-        name: form.name,
-        role: form.role,
-        type: form.type,
-      }),
+      body: JSON.stringify(payload),
     });
-    setForm({ name: '', role: '', type: 'human' });
+    setForm({ name: '', role: '', type: 'human', adapterType: 'api-key', model: '', provider: 'anthropic', openclawUrl: '' });
     setCreateOpen(false);
     fetchMembers();
   }
@@ -116,6 +139,52 @@ function MembersPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                {form.type === 'agent' && (
+                  <>
+                    <div>
+                      <Label>Adapter Type</Label>
+                      <Select value={form.adapterType} onValueChange={(v) => setForm((f) => ({ ...f, adapterType: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="api-key">API Key (Vercel AI SDK)</SelectItem>
+                          <SelectItem value="claude-cli">Claude CLI (Max subscription)</SelectItem>
+                          <SelectItem value="openclaw">OpenClaw (WebSocket)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {form.adapterType === 'api-key' && (
+                      <div>
+                        <Label>Provider</Label>
+                        <Select value={form.provider} onValueChange={(v) => setForm((f) => ({ ...f, provider: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="anthropic">Anthropic</SelectItem>
+                            <SelectItem value="openai">OpenAI</SelectItem>
+                            <SelectItem value="google">Google</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <div>
+                      <Label>Model</Label>
+                      <Input
+                        value={form.model}
+                        onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
+                        placeholder="claude-sonnet-4-20250514"
+                      />
+                    </div>
+                    {form.adapterType === 'openclaw' && (
+                      <div>
+                        <Label>OpenClaw URL</Label>
+                        <Input
+                          value={form.openclawUrl}
+                          onChange={(e) => setForm((f) => ({ ...f, openclawUrl: e.target.value }))}
+                          placeholder="ws://127.0.0.1:18789"
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
                 <Button type="submit" className="w-full">Add Member</Button>
               </form>
             </DialogContent>
